@@ -6,64 +6,27 @@
 //
 
 using BepInEx;
+using BepInEx.Unity.IL2CPP;
 using BepInEx.Configuration;
 using System;
 using System.Reflection;
 using HarmonyLib;
 using UnityEngine;
 using UnityEngine.Rendering;
-using SPT.Reflection.Patching;
+using SPTushonka.Reflection.Patching;
 
 namespace SevenBoldPencil.BrighterInteriors
 {
     [BepInPlugin("7Bpencil.BrighterInteriors", "7Bpencil.BrighterInteriors", "1.1.1")]
-    public class Plugin : BaseUnityPlugin
+    public class Plugin : BasePlugin
 	{
 		public static ConfigEntry<float> ShadowOpacity;
 
-        private void Awake()
+		public override void Load()
 		{
 			ShadowOpacity = Config.Bind<float>("Main", "Shadow Opacity", 0.7f, new ConfigDescription("0 is disabled, 1 is original", new AcceptableValueRange<float>(0f, 1f)));
 			new Patch_AmbientLight_DrawStencilShadow().Enable();
         }
-    }
-
-    public struct TypedFieldInfo<I, F>
-    {
-        public FieldInfo Field;
-
-        public TypedFieldInfo(string fieldName)
-        {
-            Field = AccessTools.Field(typeof(I), fieldName);
-        }
-
-        public void Set(I instance, F fieldValue)
-        {
-            Field.SetValue(instance, fieldValue);
-        }
-
-        public F Get(I instance)
-        {
-            return (F)Field.GetValue(instance);
-        }
-    }
-
-    public struct Proxy_AmbientLight
-    {
-        private static TypedFieldInfo<AmbientLight, Material> __clearStencilMaterial = new("_clearStencilMaterial");
-        private static TypedFieldInfo<AmbientLight, Material> __writeStencilMaterial = new("_writeStencilMaterial");
-	    private static TypedFieldInfo<AmbientLight, Mesh> __quadMesh = new("_quadMesh");
-
-        public Material _clearStencilMaterial { get { return __clearStencilMaterial.Get(__instance); } set { __clearStencilMaterial.Set(__instance, value); } }
-        public Material _writeStencilMaterial { get { return __writeStencilMaterial.Get(__instance); } set { __writeStencilMaterial.Set(__instance, value); } }
-        public Mesh _quadMesh { get { return __quadMesh.Get(__instance); } set { __quadMesh.Set(__instance, value); } }
-
-		private AmbientLight __instance;
-
-		public Proxy_AmbientLight(AmbientLight instance)
-		{
-			__instance = instance;
-		}
     }
 
     public class Patch_AmbientLight_DrawStencilShadow : ModulePatch
@@ -87,10 +50,9 @@ namespace SevenBoldPencil.BrighterInteriors
 				return false;
 			}
 
-			var __instance__ = new Proxy_AmbientLight(__instance);
-			var _clearStencilMaterial = __instance__._clearStencilMaterial;
-			var _writeStencilMaterial = __instance__._writeStencilMaterial;
-			var _quadMesh = __instance__._quadMesh;
+			var _clearStencilMaterial = __instance._clearStencilMaterial;
+			var _writeStencilMaterial = __instance._writeStencilMaterial;
+			var _quadMesh = AmbientLight._quadMesh;
 
 			cmdBuf.BeginSample(StencilShadowsUnitMarkerName);
 			cmdBuf.DrawMesh(_quadMesh, Matrix4x4.identity, _clearStencilMaterial);
